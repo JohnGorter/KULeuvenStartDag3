@@ -7,17 +7,47 @@
     <title>Document</title>
     <link rel="stylesheet" href="index.css" />
     <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/vue-router"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.js"></script>
 </head>
 <body>
     <div id="app">
-       <person-filterbar v-model="filter"></person-filterbar>
-       <div class="filterinfo" v-if="filter.text"> Filtered value {{ filter.query }} on {{ filter.text }} </div>
+       <!-- 
        <person-list :persons="filteredPeople"></person-list>
-       <person-form @newperson="people.push($event)"></person-form>
+       <person-form @newperson="people.push($event)"></person-form> -->
+       <router-view :persons="people" @newperson="people.push($event)"></router-view>
     </div>
 
+
+
     <script>
+
+   let mybus = new Vue();
+
+    // let MyPlugin = {}
+    // MyPlugin.install = function (Vue, options) {
+    //     Vue.myGlobalMethod = function () {
+    //         console.log("Global method from MyPlugin")
+    //     }
+    //     Vue.prototype.$myMethod = function (methodOptions) {
+    //         console.log("Local method from MyPlugin")
+    //     }
+    // }
+
+    // Vue.use(MyPlugin)
+
+
+    // Vue.mixin({
+    //     created:function(){
+    //         this.mixinfunc();
+    //     },
+    //     methods:{
+    //         mixinfunc: function(){
+    //             console.log("hello from mixin")
+    //         }
+    //     }
+    // })
+
     Vue.component('person-filterbar', { 
         props:["value"],
         data: function(){  return { newval:this.value.query }; },
@@ -31,29 +61,90 @@
         </div>
         `
     });
-    Vue.component('person-list', { 
-        props:["persons"],
+
+    let personDetailsMore = Vue.component('person-details-more', {
         template:`
         <div>
-            <div v-if="persons.length">
-                <div v-for="p in persons" class="personitem">
+            <p>More information about this person</p>
+        </div>
+        `
+    })
+
+    let personStatistics = Vue.component('person-statistics', {
+        template:`
+        <div>
+            <p>Statistics about this person</p>
+        </div>
+        `
+    })
+
+
+    let personDetails = Vue.component('person-details', {
+        props:["persons"],
+        created:function(){
+            // fetch person by id...
+        },
+        template:`
+        <div>
+            <h1>Profile page of {{$route.params.name}} lots of persons {{ persons }}</h1>
+            <router-link :to="'/details/'+$route.params.name+'/info'">More Info</router-link>
+            <router-link :to="'/details/'+$route.params.name+'/statistics'">Statistics</router-link>
+
+            <router-view></router-view>
+
+            <router-link to="/">Back to the list</router-link>
+        </div>
+        `
+    })
+
+    let personList = Vue.component('person-list', { 
+        props:["persons"],
+        filters:{
+            displayName:function(person){
+                return "filterered: " + person.firstName + " " + person.lastName
+            }
+        },
+        computed:{  
+            filteredPeople:function() {
+                return this.persons.filter(p => p[['firstName','lastName'][this.filter.mode]].indexOf(this.filter.query) != -1);
+            }
+        },
+        watch:{
+            filter: function(){
+                this.filter.text = ['firstName','lastName'][this.filter.mode]
+            }
+        },
+        data: function() {
+            return { filter:{ text:'', query:'', mode:0 } };
+        },
+        template:`
+        <div>
+            <person-filterbar v-model="filter"></person-filterbar>
+            <div class="filterinfo" v-if="filter.text"> Filtered value {{ filter.query }} on {{ filter.text }} </div>
+            <div v-if="filteredPeople.length">
+                <div v-for="p in filteredPeople" class="personitem">
                     <img :src="p.avatar" class="avatar"></img>
-                    <div> {{p.firstName}} {{p.lastName}}</div>
+                    <router-link :to="'details/'+p.firstName"> {{ p | displayName }}</router-link>
                 </div>
             </div>
             <div v-else>
                 - no persons found -
             </div>
+            <div>
+                <router-link to="/newperson">Add a new person</router-link>
+            </div>
         </div>
         `});
-    Vue.component('person-form', { 
+    let personForm = Vue.component('person-form', { 
         data: function() { 
             return { newPerson:{} }
         },
         methods:{
             submit(){
+                mybus.$emit('person-saved', { ...this.newPerson});
                 this.$emit('newperson', { ...this.newPerson})
                 this.newPerson = {};
+                this.$router.go(-1);
             }
         },
         template:`
@@ -78,20 +169,27 @@
         return persons;
     }
    
+    var router = new VueRouter({
+        routes:[
+            {path:'/',component:personList},
+            {path:'/details/:name',component:personDetails,
+                children:[
+                    {path:'info',component:personDetailsMore},
+                    {path:'statistics',component:personStatistics}
+                ]},
+            {path:'/newperson',component:personForm}
+        ]
+    });
+
     var app = new Vue({
         el:"#app",
-        computed:{  
-            filteredPeople:function() {
-                return this.people.filter(p => p[['firstName','lastName'][this.filter.mode]].indexOf(this.filter.query) != -1);
-            }
-        },
-        watch:{
-            filter: function(){
-                this.filter.text = ['firstName','lastName'][this.filter.mode]
-            }
+        router,
+        created:function(){
+            mybus.$on('person-saved', person => {
+                console.log("a new person is born...");
+            });
         },
         data:{
-            filter:{ text:'', query:'', mode:0 },
             people:_generatePeople(10)
         }
     }); 
