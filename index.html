@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.js"></script>
+</head>
+<body>
+    <div id="app">
+       <person-filterbar v-model="filter"></person-filterbar>
+       <div class="filterinfo" v-if="filter.text"> Filtered value {{ filter.query }} on {{ filter.text }} </div>
+       <person-list :persons="filteredPeople"></person-list>
+       <person-form @newperson="people.push($event)"></person-form>
+    </div>
+
+    <script>
+    Vue.component('person-filterbar', { 
+        props:["value"],
+        data: function(){  return { newval:this.value.query }; },
+        methods:{
+            submit(mode){ this.$emit('input', { query:this.newval, mode:mode}); }
+        },
+        template:`
+        <div>
+            <input type="text" v-model="newval" placeholder="filter"></input>
+            <button @click.exact="submit(0)" @click.shift.exact="submit(1)" >search</button>
+        </div>
+        `
+    });
+    Vue.component('person-list', { 
+        props:["persons"],
+        template:`
+        <div>
+            <div v-if="persons.length">
+                <div v-for="p in persons" class="personitem">
+                    <img :src="p.avatar" class="avatar"></img>
+                    <div> {{p.firstName}} {{p.lastName}}</div>
+                </div>
+            </div>
+            <div v-else>
+                - no persons found -
+            </div>
+        </div>
+        `});
+    Vue.component('person-form', { 
+        data: function() { 
+            return { newPerson:{} }
+        },
+        methods:{
+            submit(){
+                this.$emit('newperson', { ...this.newPerson})
+                this.newPerson = {};
+            }
+        },
+        template:`
+        <div>
+            <dl>
+            <dt>firstname</dt>
+            <dd><input type="text" placeholder="firstname" v-model="newPerson.firstName"/></dd>
+            <dt>lastname</td> <dd><input type="text" placeholder="firstname" v-model="newPerson.lastName"/></dd>
+            <dt>avatar url</dt> <dd><input type="text" placeholder="firstname" v-model="newPerson.avatar"/></dd>
+            </dl>
+            <button @click="submit">Save</button>
+        </div>
+        `});
+    
+   let _generatePeople = function(number){
+       let persons = [];
+        for(let i = 0; i < number; i++)
+            persons.push({ 
+                firstName: faker.name.firstName(), 
+                lastName: faker.name.lastName(), 
+                avatar: faker.image.avatar()});
+        return persons;
+    }
+   
+    var app = new Vue({
+        el:"#app",
+        computed:{  
+            filteredPeople:function() {
+                return this.people.filter(p => p[['firstName','lastName'][this.filter.mode]].indexOf(this.filter.query) != -1);
+            }
+        },
+        watch:{
+            filter: function(){
+                this.filter.text = ['firstName','lastName'][this.filter.mode]
+            }
+        },
+        data:{
+            filter:{ text:'', query:'', mode:0 },
+            people:_generatePeople(10)
+        }
+    }); 
+    </script>
+</body>
+</html>

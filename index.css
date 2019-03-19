@@ -1,0 +1,4 @@
+html, body { box-sizing: border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif}
+.filterinfo { display:flex;align-items:center;height:50px;}
+.personitem { margin:15px;box-shadow:5px 5px 5px #ccc;background-color:#ddd;display:flex;justify-content:flex-start;align-items:center;}
+.avatar { border-radius:50%;padding:20px;height:50px;}
